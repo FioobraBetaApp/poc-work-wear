@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bestillinger – Arbeidstøybørsen</title>
-  <meta name="description" content="Oversikt over bestillinger Modum kommune har gjort hos Re:textile." />
+  <title>Bestillinger – Re:textile</title>
+  <meta name="description" content="Bestillinger fra kommunene til Re:textile. Bekreft, marker som sendt og levert." />
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
@@ -14,10 +14,10 @@
 
   <main id="main">
     <h1 class="page-title">Bestillinger</h1>
-    <p class="page-lead">Oversikt over bestillinger Modum kommune har gjort hos Re:textile.</p>
+    <p class="page-lead">Bestillinger fra kommunene. Bekreft, marker som sendt og til slutt som levert.</p>
 
     <ul class="order-list" id="order-list" aria-label="Bestillingsliste"></ul>
-    <p id="empty-orders" class="empty-state" hidden>Modum kommune har ingen bestillinger ennå. <a href="butikk.html">Gå til butikken</a>.</p>
+    <p id="empty-orders" class="empty-state" hidden>Ingen bestillinger ennå.</p>
   </main>
 
   <footer class="site-footer">
@@ -28,23 +28,30 @@
   <script src="assets/js/store.js"></script>
   <script src="assets/js/ui.js"></script>
   <script>
+    const NEXT_LABEL = {
+      Venter: "Bekreft bestilling",
+      Bekreftet: "Marker som sendt",
+      Sendt: "Marker som levert",
+    };
+
     function renderOrders() {
       const list = document.getElementById("order-list");
       const emptyMsg = document.getElementById("empty-orders");
-      const orders = Store.getMyOrders();
+      const orders = Store.getOrders();
 
       list.innerHTML = "";
       emptyMsg.hidden = orders.length !== 0;
 
       orders.forEach((order) => {
         const total = order.items.reduce((sum, i) => sum + i.quantity * i.price, 0);
+        const nextLabel = NEXT_LABEL[order.status];
         const li = document.createElement("li");
         li.className = "order-card";
         li.innerHTML = `
           <div class="order-card-header">
             <div>
               <span class="order-id">${escapeHtml(order.id)}</span>
-              <span class="order-meta"> · ${order.date} · Til ${escapeHtml(Store.SELLER)}</span>
+              <span class="order-meta"> · ${order.date} · Fra ${escapeHtml(order.buyer)}</span>
             </div>
             <span class="status-pill" data-status="${order.status}">${order.status}</span>
           </div>
@@ -56,20 +63,25 @@
               .join("")}
           </ul>
           <div class="summary-row total"><span>Totalt</span><span>${Store.formatPrice(total)}</span></div>
+          ${
+            nextLabel
+              ? `<div class="card-actions"><button class="btn btn-primary btn-sm" type="button" data-advance="${order.id}">${nextLabel}</button></div>`
+              : ""
+          }
         `;
         list.appendChild(li);
       });
+
+      list.querySelectorAll("[data-advance]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          Store.advanceOrder(btn.dataset.advance);
+          renderOrders();
+        });
+      });
     }
 
-    if (initPage("buyer", "bestillinger")) {
+    if (initPage("admin", "bestillinger")) {
       renderOrders();
-
-      const params = new URLSearchParams(window.location.search);
-      const placed = params.get("placed");
-      if (placed) {
-        showToast("Bestilling sendt til Re:textile: " + placed);
-        window.history.replaceState({}, "", "bestillinger.html");
-      }
     }
   </script>
 </body>

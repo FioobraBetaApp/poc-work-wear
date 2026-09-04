@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Varemottak – Re:textile</title>
+  <meta name="description" content="Plagg kommunene har sendt inn til Re:textile: kontroll, reparasjon, sortering og utlegging for salg." />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Hopp til innhold</a>
+
+  <div id="app-header"></div>
+
+  <main id="main">
+    <h1 class="page-title">Varemottak</h1>
+    <p class="page-lead">Plagg kommunene har sendt inn. Flytt dem gjennom kontroll, reparasjon og sortering, og legg dem ut for salg når de er klare.</p>
+
+    <ul class="order-list" id="intake-list" aria-label="Plagg i varemottak"></ul>
+    <p id="empty-intake" class="empty-state" hidden>Ingen plagg i mottak akkurat nå.</p>
+
+    <div class="section-heading">
+      <h2>Registrer mottatt plagg</h2>
+    </div>
+
+    <form class="form-card" id="intake-form" novalidate>
+      <div class="form-grid">
+        <div class="field full">
+          <label for="i-title">Plagg</label>
+          <input type="text" id="i-title" name="title" required maxlength="60" />
+        </div>
+
+        <div class="field">
+          <label for="i-category">Kategori</label>
+          <select id="i-category" name="category" required>
+            <option value="Vernebekledning">Vernebekledning</option>
+            <option value="Overdeler">Overdeler</option>
+            <option value="Underdeler">Underdeler</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="i-size">Størrelse</label>
+          <select id="i-size" name="size" required>
+            <option value="S">S</option>
+            <option value="M">M</option>
+            <option value="L">L</option>
+            <option value="XL">XL</option>
+            <option value="XXL">XXL</option>
+            <option value="One size">One size</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="i-quantity">Antall</label>
+          <input type="number" id="i-quantity" name="quantity" min="1" step="1" required />
+        </div>
+
+        <div class="field">
+          <label for="i-origin">Fra kommune</label>
+          <select id="i-origin" name="origin" required></select>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" type="submit" style="margin-top: 1rem;">Registrer i mottak</button>
+    </form>
+  </main>
+
+  <footer class="site-footer">
+    Demo – ingen data lagres utenfor denne nettleseren.
+  </footer>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    function renderIntake() {
+      const list = document.getElementById("intake-list");
+      const emptyMsg = document.getElementById("empty-intake");
+      const items = Store.getIntake();
+
+      list.innerHTML = "";
+      emptyMsg.hidden = items.length !== 0;
+
+      items.forEach((item) => {
+        const ready = item.status === "Klar for salg";
+        const li = document.createElement("li");
+        li.className = "order-card";
+        li.innerHTML = `
+          <div class="order-card-header">
+            <div>
+              <span class="order-id">${item.quantity} × ${escapeHtml(item.title)}</span>
+              <span class="order-meta"> · ${escapeHtml(item.category)} · Str. ${escapeHtml(item.size)}</span>
+            </div>
+            <span class="status-pill" data-status="${item.status}">${item.status}</span>
+          </div>
+          <p class="listing-meta">
+            <span>Fra ${escapeHtml(item.origin)}</span>
+            <span>Mottatt ${item.received}</span>
+          </p>
+          <div class="card-actions">
+            ${
+              ready
+                ? `<button class="btn btn-primary btn-sm" type="button" data-publish="${item.id}">Legg ut for salg</button>`
+                : `<button class="btn btn-secondary btn-sm" type="button" data-advance="${item.id}">Flytt til neste steg</button>`
+            }
+          </div>
+        `;
+        list.appendChild(li);
+      });
+
+      list.querySelectorAll("[data-advance]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          Store.advanceIntake(Number(btn.dataset.advance));
+          renderIntake();
+        });
+      });
+
+      list.querySelectorAll("[data-publish]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const rec = Store.publishIntake(Number(btn.dataset.publish));
+          renderIntake();
+          if (rec) showToast(`${rec.title} er lagt ut for salg`);
+        });
+      });
+    }
+
+    function fillMunicipalities() {
+      const select = document.getElementById("i-origin");
+      select.innerHTML = Store.MUNICIPALITIES.map(
+        (m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`
+      ).join("");
+      select.value = Store.MY_MUNICIPALITY;
+    }
+
+    document.getElementById("intake-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const title = form.title.value.trim();
+      const quantity = parseInt(form.quantity.value, 10);
+
+      if (!title || !Number.isFinite(quantity) || quantity < 1) {
+        showToast("Fyll ut plagg og antall for å registrere.");
+        return;
+      }
+
+      Store.addIntake({
+        title,
+        category: form.category.value,
+        size: form.size.value,
+        quantity,
+        origin: form.origin.value,
+      });
+
+      form.reset();
+      fillMunicipalities();
+      renderIntake();
+      showToast(`${title} registrert i varemottak`);
+    });
+
+    if (initPage("admin", "varemottak")) {
+      fillMunicipalities();
+      renderIntake();
+    }
+  </script>
+</body>
+</html>

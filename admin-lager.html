@@ -3,35 +3,21 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mine annonser – Arbeidstøybørsen</title>
-  <meta name="description" content="Se og legg til varer Modum kommune har lagt ut for utveksling." />
+  <title>Varer på lager – Re:textile</title>
+  <meta name="description" content="Arbeidstøy Re:textile har kontrollert og lagt ut for salg, med skjema for å legge ut nye varer." />
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
   <a class="skip-link" href="#main">Hopp til innhold</a>
 
-  <header class="site-header">
-    <div class="header-inner">
-      <a class="brand" href="index.html">
-        <span class="brand-name">Arbeidstøybørsen</span>
-        <span class="brand-tagline">Utveksling av arbeidstøy mellom kommuner</span>
-      </a>
-      <nav class="main-nav" aria-label="Hovedmeny">
-        <a href="index.html" data-page="oversikt">Oversikt</a>
-        <a href="handlekurv.html" data-page="handlekurv">Handlekurv<span class="badge-count" data-cart-count aria-hidden="true">0</span><span class="sr-only"> varer i handlekurv</span></a>
-        <a href="bestillinger.html" data-page="bestillinger">Bestillinger</a>
-        <a href="mine-annonser.html" data-page="mine-annonser">Mine annonser</a>
-      </nav>
-      <span class="user-chip">Innlogget som <strong>Modum kommune</strong></span>
-    </div>
-  </header>
+  <div id="app-header"></div>
 
   <main id="main">
-    <h1 class="page-title">Mine annonser</h1>
-    <p class="page-lead">Varer Modum kommune har lagt ut for utveksling med andre kommuner.</p>
+    <h1 class="page-title">Varer på lager</h1>
+    <p class="page-lead">Arbeidstøy Re:textile har kontrollert og lagt ut for salg. Kommunene bestiller fra denne katalogen.</p>
 
-    <ul class="listing-grid" id="my-listing-grid" aria-label="Egne annonser"></ul>
-    <p id="empty-mine" class="empty-state" hidden>Dere har ingen annonser ennå. Legg ut en vare under.</p>
+    <ul class="listing-grid" id="stock-grid" aria-label="Varer lagt ut for salg"></ul>
+    <p id="empty-stock" class="empty-state" hidden>Ingen varer er lagt ut ennå. Legg ut en vare under.</p>
 
     <div class="section-heading">
       <h2>Legg ut ny vare</h2>
@@ -66,6 +52,20 @@
         </div>
 
         <div class="field">
+          <label for="f-origin">Opprinnelse (kommune)</label>
+          <select id="f-origin" name="origin" required></select>
+        </div>
+
+        <div class="field">
+          <label for="f-condition">Tilstand</label>
+          <select id="f-condition" name="condition" required>
+            <option value="Kontrollert">Kontrollert</option>
+            <option value="Reparert">Reparert</option>
+            <option value="Som ny">Som ny</option>
+          </select>
+        </div>
+
+        <div class="field">
           <label for="f-price">Pris per stk (kr)</label>
           <input type="number" id="f-price" name="price" min="0" step="10" required />
         </div>
@@ -94,10 +94,10 @@
   <script src="assets/js/store.js"></script>
   <script src="assets/js/ui.js"></script>
   <script>
-    function renderMyListings() {
-      const grid = document.getElementById("my-listing-grid");
-      const emptyMsg = document.getElementById("empty-mine");
-      const listings = Store.getListings().filter((l) => l.municipality === Store.MY_MUNICIPALITY);
+    function renderStock() {
+      const grid = document.getElementById("stock-grid");
+      const emptyMsg = document.getElementById("empty-stock");
+      const listings = Store.getListings();
 
       grid.innerHTML = "";
       emptyMsg.hidden = listings.length !== 0;
@@ -112,16 +112,28 @@
               <h2 class="listing-title">${escapeHtml(listing.title)}</h2>
               <span class="listing-price">${Store.formatPrice(listing.price)}</span>
             </div>
-            <span class="category-tag" data-category="${listing.category}">${listing.category}</span>
+            <div class="tag-row">
+              <span class="category-tag" data-category="${listing.category}">${listing.category}</span>
+              <span class="condition-tag">${escapeHtml(listing.condition || "Kontrollert")}</span>
+            </div>
             <p class="listing-meta">
               <span>Str. ${escapeHtml(listing.size)}</span>
-              <span>${listing.quantity} stk. tilgjengelig</span>
+              <span>${listing.quantity} stk. på lager</span>
+              <span>Fra ${escapeHtml(listing.origin)}</span>
             </p>
             <p class="listing-desc">${escapeHtml(listing.description)}</p>
           </div>
         `;
         grid.appendChild(li);
       });
+    }
+
+    function fillMunicipalities() {
+      const select = document.getElementById("f-origin");
+      select.innerHTML = Store.MUNICIPALITIES.map(
+        (m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`
+      ).join("");
+      select.value = Store.MY_MUNICIPALITY;
     }
 
     document.getElementById("new-listing-form").addEventListener("submit", (e) => {
@@ -140,18 +152,23 @@
         title,
         category: form.category.value,
         size: form.size.value,
+        origin: form.origin.value,
+        condition: form.condition.value,
         price,
         quantity,
         description: form.description.value.trim() || "Ingen beskrivelse lagt til.",
       });
 
       form.reset();
-      renderMyListings();
-      showToast(`${title} er lagt ut for utveksling`);
+      fillMunicipalities();
+      renderStock();
+      showToast(`${title} er lagt ut for salg`);
     });
 
-    initNav("mine-annonser");
-    renderMyListings();
+    if (initPage("admin", "lager")) {
+      fillMunicipalities();
+      renderStock();
+    }
   </script>
 </body>
 </html>
