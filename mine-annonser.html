@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mine annonser – Arbeidstøybørsen</title>
+  <meta name="description" content="Se og legg til varer Modum kommune har lagt ut for utveksling." />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Hopp til innhold</a>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-name">Arbeidstøybørsen</span>
+        <span class="brand-tagline">Utveksling av arbeidstøy mellom kommuner</span>
+      </a>
+      <nav class="main-nav" aria-label="Hovedmeny">
+        <a href="index.html" data-page="oversikt">Oversikt</a>
+        <a href="handlekurv.html" data-page="handlekurv">Handlekurv<span class="badge-count" data-cart-count aria-hidden="true">0</span><span class="sr-only"> varer i handlekurv</span></a>
+        <a href="bestillinger.html" data-page="bestillinger">Bestillinger</a>
+        <a href="mine-annonser.html" data-page="mine-annonser">Mine annonser</a>
+      </nav>
+      <span class="user-chip">Innlogget som <strong>Modum kommune</strong></span>
+    </div>
+  </header>
+
+  <main id="main">
+    <h1 class="page-title">Mine annonser</h1>
+    <p class="page-lead">Varer Modum kommune har lagt ut for utveksling med andre kommuner.</p>
+
+    <ul class="listing-grid" id="my-listing-grid" aria-label="Egne annonser"></ul>
+    <p id="empty-mine" class="empty-state" hidden>Dere har ingen annonser ennå. Legg ut en vare under.</p>
+
+    <div class="section-heading">
+      <h2>Legg ut ny vare</h2>
+    </div>
+
+    <form class="form-card" id="new-listing-form" novalidate>
+      <div class="form-grid">
+        <div class="field full">
+          <label for="f-title">Tittel</label>
+          <input type="text" id="f-title" name="title" required maxlength="60" />
+        </div>
+
+        <div class="field">
+          <label for="f-category">Kategori</label>
+          <select id="f-category" name="category" required>
+            <option value="Vernebekledning">Vernebekledning</option>
+            <option value="Overdeler">Overdeler</option>
+            <option value="Underdeler">Underdeler</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="f-size">Størrelse</label>
+          <select id="f-size" name="size" required>
+            <option value="S">S</option>
+            <option value="M">M</option>
+            <option value="L">L</option>
+            <option value="XL">XL</option>
+            <option value="XXL">XXL</option>
+            <option value="One size">One size</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="f-price">Pris per stk (kr)</label>
+          <input type="number" id="f-price" name="price" min="0" step="10" required />
+        </div>
+
+        <div class="field">
+          <label for="f-quantity">Antall tilgjengelig</label>
+          <input type="number" id="f-quantity" name="quantity" min="1" step="1" required />
+        </div>
+
+        <div class="field full">
+          <label for="f-description">Beskrivelse</label>
+          <textarea id="f-description" name="description" maxlength="200"></textarea>
+          <span class="field-hint">Valgfritt – noen ord om stand og bruksområde.</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" type="submit" style="margin-top: 1rem;">Legg ut vare</button>
+    </form>
+  </main>
+
+  <footer class="site-footer">
+    Demo – ingen data lagres utenfor denne nettleseren.
+  </footer>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    function renderMyListings() {
+      const grid = document.getElementById("my-listing-grid");
+      const emptyMsg = document.getElementById("empty-mine");
+      const listings = Store.getListings().filter((l) => l.municipality === Store.MY_MUNICIPALITY);
+
+      grid.innerHTML = "";
+      emptyMsg.hidden = listings.length !== 0;
+
+      listings.forEach((listing) => {
+        const li = document.createElement("li");
+        li.className = "listing-card";
+        li.innerHTML = `
+          <img src="${placeholderImage(listing.category)}" alt="Illustrasjonsbilde av ${escapeHtml(listing.title)}" />
+          <div class="listing-body">
+            <div class="listing-top-row">
+              <h2 class="listing-title">${escapeHtml(listing.title)}</h2>
+              <span class="listing-price">${Store.formatPrice(listing.price)}</span>
+            </div>
+            <span class="category-tag" data-category="${listing.category}">${listing.category}</span>
+            <p class="listing-meta">
+              <span>Str. ${escapeHtml(listing.size)}</span>
+              <span>${listing.quantity} stk. tilgjengelig</span>
+            </p>
+            <p class="listing-desc">${escapeHtml(listing.description)}</p>
+          </div>
+        `;
+        grid.appendChild(li);
+      });
+    }
+
+    document.getElementById("new-listing-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const title = form.title.value.trim();
+      const price = parseInt(form.price.value, 10);
+      const quantity = parseInt(form.quantity.value, 10);
+
+      if (!title || !Number.isFinite(price) || price < 0 || !Number.isFinite(quantity) || quantity < 1) {
+        showToast("Fyll ut tittel, pris og antall for å legge ut varen.");
+        return;
+      }
+
+      Store.addListing({
+        title,
+        category: form.category.value,
+        size: form.size.value,
+        price,
+        quantity,
+        description: form.description.value.trim() || "Ingen beskrivelse lagt til.",
+      });
+
+      form.reset();
+      renderMyListings();
+      showToast(`${title} er lagt ut for utveksling`);
+    });
+
+    initNav("mine-annonser");
+    renderMyListings();
+  </script>
+</body>
+</html>

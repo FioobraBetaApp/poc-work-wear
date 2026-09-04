@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Oversikt – Arbeidstøybørsen</title>
+  <meta name="description" content="Bla gjennom arbeidstøy som er ledig for utveksling mellom kommuner." />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Hopp til innhold</a>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-name">Arbeidstøybørsen</span>
+        <span class="brand-tagline">Utveksling av arbeidstøy mellom kommuner</span>
+      </a>
+      <nav class="main-nav" aria-label="Hovedmeny">
+        <a href="index.html" data-page="oversikt">Oversikt</a>
+        <a href="handlekurv.html" data-page="handlekurv">Handlekurv<span class="badge-count" data-cart-count aria-hidden="true">0</span><span class="sr-only"> varer i handlekurv</span></a>
+        <a href="bestillinger.html" data-page="bestillinger">Bestillinger</a>
+        <a href="mine-annonser.html" data-page="mine-annonser">Mine annonser</a>
+      </nav>
+      <span class="user-chip">Innlogget som <strong>Modum kommune</strong></span>
+    </div>
+  </header>
+
+  <main id="main">
+    <h1 class="page-title">Ledige varer</h1>
+    <p class="page-lead">Bla gjennom arbeidstøy andre kommuner har lagt ut for utveksling. Velg antall og legg i handlekurven.</p>
+
+    <div class="filters" role="group" aria-label="Filtrer etter kategori">
+      <button class="filter-btn" type="button" data-filter="Alle" aria-pressed="true">Alle</button>
+      <button class="filter-btn" type="button" data-filter="Vernebekledning" aria-pressed="false">Vernebekledning</button>
+      <button class="filter-btn" type="button" data-filter="Overdeler" aria-pressed="false">Overdeler</button>
+      <button class="filter-btn" type="button" data-filter="Underdeler" aria-pressed="false">Underdeler</button>
+    </div>
+
+    <ul class="listing-grid" id="listing-grid" aria-label="Varer til utveksling"></ul>
+    <p id="empty-message" class="empty-state" hidden>Ingen varer i denne kategorien akkurat nå.</p>
+  </main>
+
+  <footer class="site-footer">
+    Demo – ingen data lagres utenfor denne nettleseren.
+  </footer>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    let activeFilter = "Alle";
+
+    function renderListings() {
+      const grid = document.getElementById("listing-grid");
+      const emptyMsg = document.getElementById("empty-message");
+      const listings = Store.getListings().filter(
+        (l) => activeFilter === "Alle" || l.category === activeFilter
+      );
+
+      grid.innerHTML = "";
+      emptyMsg.hidden = listings.length !== 0;
+
+      listings.forEach((listing) => {
+        const isMine = listing.municipality === Store.MY_MUNICIPALITY;
+        const soldOut = listing.quantity <= 0;
+        const li = document.createElement("li");
+        li.className = "listing-card";
+        li.innerHTML = `
+          <img src="${placeholderImage(listing.category)}" alt="Illustrasjonsbilde av ${escapeHtml(listing.title)}" />
+          <div class="listing-body">
+            <div class="listing-top-row">
+              <h2 class="listing-title">${escapeHtml(listing.title)}</h2>
+              <span class="listing-price">${Store.formatPrice(listing.price)}</span>
+            </div>
+            <span class="category-tag" data-category="${listing.category}">${listing.category}</span>
+            <p class="listing-meta">
+              <span>Str. ${escapeHtml(listing.size)}</span>
+              <span>${listing.quantity} stk. tilgjengelig</span>
+              <span>${escapeHtml(listing.municipality)}</span>
+            </p>
+            <p class="listing-desc">${escapeHtml(listing.description)}</p>
+            <div class="listing-footer">
+              ${
+                isMine
+                  ? `<span class="own-tag">Din annonse</span>`
+                  : soldOut
+                  ? `<span class="own-tag">Utsolgt</span>`
+                  : `
+                <div class="qty-field">
+                  <label for="qty-${listing.id}">Antall</label>
+                  <input type="number" id="qty-${listing.id}" min="1" max="${listing.quantity}" value="1" />
+                </div>
+                <button class="btn btn-primary" type="button" data-add="${listing.id}">Legg i kurv</button>
+              `
+              }
+            </div>
+          </div>
+        `;
+        grid.appendChild(li);
+      });
+
+      grid.querySelectorAll("[data-add]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = Number(btn.dataset.add);
+          const qtyInput = document.getElementById(`qty-${id}`);
+          let qty = parseInt(qtyInput.value, 10);
+          if (!Number.isFinite(qty) || qty < 1) qty = 1;
+          Store.addToCart(id, qty);
+          Store.updateCartBadge();
+          const listing = Store.getListing(id);
+          showToast(`${qty} × ${listing.title} lagt i handlekurven`);
+        });
+      });
+    }
+
+    document.querySelectorAll(".filter-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".filter-btn").forEach((b) => b.setAttribute("aria-pressed", "false"));
+        btn.setAttribute("aria-pressed", "true");
+        activeFilter = btn.dataset.filter;
+        renderListings();
+      });
+    });
+
+    initNav("oversikt");
+    renderListings();
+  </script>
+</body>
+</html>

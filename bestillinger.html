@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bestillinger – Arbeidstøybørsen</title>
+  <meta name="description" content="Se bestillinger du har sendt og bestillinger andre kommuner har lagt inn hos deg." />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Hopp til innhold</a>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-name">Arbeidstøybørsen</span>
+        <span class="brand-tagline">Utveksling av arbeidstøy mellom kommuner</span>
+      </a>
+      <nav class="main-nav" aria-label="Hovedmeny">
+        <a href="index.html" data-page="oversikt">Oversikt</a>
+        <a href="handlekurv.html" data-page="handlekurv">Handlekurv<span class="badge-count" data-cart-count aria-hidden="true">0</span><span class="sr-only"> varer i handlekurv</span></a>
+        <a href="bestillinger.html" data-page="bestillinger">Bestillinger</a>
+        <a href="mine-annonser.html" data-page="mine-annonser">Mine annonser</a>
+      </nav>
+      <span class="user-chip">Innlogget som <strong>Modum kommune</strong></span>
+    </div>
+  </header>
+
+  <main id="main">
+    <h1 class="page-title">Bestillinger</h1>
+    <p class="page-lead">Oversikt over bestillinger Modum kommune har sendt, og bestillinger andre kommuner har lagt inn hos dere.</p>
+
+    <div class="order-tabs" role="group" aria-label="Vis bestillinger">
+      <button class="filter-btn" type="button" data-tab="sent" aria-pressed="true">Sendt av oss</button>
+      <button class="filter-btn" type="button" data-tab="received" aria-pressed="false">Mottatt fra andre</button>
+    </div>
+
+    <ul class="order-list" id="order-list" aria-label="Bestillingsliste"></ul>
+    <p id="empty-orders" class="empty-state" hidden>Ingen bestillinger i denne kategorien ennå.</p>
+  </main>
+
+  <footer class="site-footer">
+    Demo – ingen data lagres utenfor denne nettleseren.
+  </footer>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    let activeTab = "sent";
+
+    function renderOrders() {
+      const list = document.getElementById("order-list");
+      const emptyMsg = document.getElementById("empty-orders");
+      const orders = Store.getOrders().filter((o) => o.direction === activeTab);
+
+      list.innerHTML = "";
+      emptyMsg.hidden = orders.length !== 0;
+
+      orders.forEach((order) => {
+        const total = order.items.reduce((sum, i) => sum + i.quantity * i.price, 0);
+        const li = document.createElement("li");
+        li.className = "order-card";
+        li.innerHTML = `
+          <div class="order-card-header">
+            <div>
+              <span class="order-id">${escapeHtml(order.id)}</span>
+              <span class="order-meta"> · ${order.date} · ${
+                activeTab === "sent" ? "Til" : "Fra"
+              } ${escapeHtml(order.counterparty)}</span>
+            </div>
+            <span class="status-pill" data-status="${order.status}">${order.status}</span>
+          </div>
+          <ul class="order-items">
+            ${order.items
+              .map(
+                (i) => `<li><span>${i.quantity} × ${escapeHtml(i.title)}</span><span>${Store.formatPrice(i.quantity * i.price)}</span></li>`
+              )
+              .join("")}
+          </ul>
+          <div class="summary-row total"><span>Totalt</span><span>${Store.formatPrice(total)}</span></div>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    document.querySelectorAll("[data-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-pressed", "false"));
+        btn.setAttribute("aria-pressed", "true");
+        activeTab = btn.dataset.tab;
+        renderOrders();
+      });
+    });
+
+    initNav("bestillinger");
+    renderOrders();
+
+    const params = new URLSearchParams(window.location.search);
+    const placed = params.get("placed");
+    if (placed) {
+      showToast("Bestilling sendt: " + placed.split(",").join(", "));
+      window.history.replaceState({}, "", "bestillinger.html");
+    }
+  </script>
+</body>
+</html>

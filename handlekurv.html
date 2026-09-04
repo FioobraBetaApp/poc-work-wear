@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Handlekurv – Arbeidstøybørsen</title>
+  <meta name="description" content="Se over varene i handlekurven før du sender bestilling." />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Hopp til innhold</a>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-name">Arbeidstøybørsen</span>
+        <span class="brand-tagline">Utveksling av arbeidstøy mellom kommuner</span>
+      </a>
+      <nav class="main-nav" aria-label="Hovedmeny">
+        <a href="index.html" data-page="oversikt">Oversikt</a>
+        <a href="handlekurv.html" data-page="handlekurv">Handlekurv<span class="badge-count" data-cart-count aria-hidden="true">0</span><span class="sr-only"> varer i handlekurv</span></a>
+        <a href="bestillinger.html" data-page="bestillinger">Bestillinger</a>
+        <a href="mine-annonser.html" data-page="mine-annonser">Mine annonser</a>
+      </nav>
+      <span class="user-chip">Innlogget som <strong>Modum kommune</strong></span>
+    </div>
+  </header>
+
+  <main id="main">
+    <h1 class="page-title">Handlekurv</h1>
+    <p class="page-lead">Juster antall eller fjern varer før du sender bestillingen videre til de aktuelle kommunene.</p>
+
+    <div id="cart-content"></div>
+  </main>
+
+  <footer class="site-footer">
+    Demo – ingen data lagres utenfor denne nettleseren.
+  </footer>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script>
+    function renderCart() {
+      const container = document.getElementById("cart-content");
+      const items = Store.cartDetails();
+
+      if (items.length === 0) {
+        container.innerHTML = `
+          <p class="empty-state">
+            Handlekurven er tom. <a href="index.html">Gå til oversikten</a> for å finne varer.
+          </p>`;
+        return;
+      }
+
+      const rows = items
+        .map(
+          (item) => `
+        <li class="cart-row">
+          <img src="${placeholderImage(item.listing.category)}" alt="" />
+          <div class="cart-row-info">
+            <h3>${escapeHtml(item.listing.title)}</h3>
+            <p>${escapeHtml(item.listing.municipality)} · Str. ${escapeHtml(item.listing.size)} · ${Store.formatPrice(item.listing.price)} / stk</p>
+          </div>
+          <div class="cart-row-actions">
+            <div class="qty-field">
+              <label for="cart-qty-${item.listingId}">Antall</label>
+              <input type="number" id="cart-qty-${item.listingId}" min="1" max="${item.listing.quantity}" value="${item.quantity}" data-qty-input="${item.listingId}" />
+            </div>
+            <button class="btn btn-danger" type="button" data-remove="${item.listingId}">Fjern</button>
+          </div>
+        </li>`
+        )
+        .join("");
+
+      const total = Store.cartTotal();
+      const count = Store.cartCount();
+
+      container.innerHTML = `
+        <div class="cart-layout">
+          <ul class="cart-list" aria-label="Varer i handlekurven">${rows}</ul>
+          <div class="summary-card">
+            <h2>Oppsummering</h2>
+            <div class="summary-row"><span>Antall varer</span><span>${count}</span></div>
+            <div class="summary-row total"><span>Totalt</span><span>${Store.formatPrice(total)}</span></div>
+            <button class="btn btn-primary btn-block" type="button" id="place-order" style="margin-top: 0.9rem;">Send bestilling</button>
+            <p class="field-hint" style="margin-top:0.6rem;">Bestillingen deles automatisk per kommune og dukker opp under «Bestillinger».</p>
+          </div>
+        </div>
+      `;
+
+      container.querySelectorAll("[data-qty-input]").forEach((input) => {
+        input.addEventListener("change", () => {
+          const id = Number(input.dataset.qtyInput);
+          let qty = parseInt(input.value, 10);
+          if (!Number.isFinite(qty) || qty < 1) qty = 1;
+          Store.updateCartQuantity(id, qty);
+          Store.updateCartBadge();
+          renderCart();
+        });
+      });
+
+      container.querySelectorAll("[data-remove]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = Number(btn.dataset.remove);
+          const listing = Store.getListing(id);
+          Store.removeFromCart(id);
+          Store.updateCartBadge();
+          renderCart();
+          showToast(`${listing ? listing.title : "Varen"} fjernet fra handlekurven`);
+        });
+      });
+
+      const placeOrderBtn = document.getElementById("place-order");
+      if (placeOrderBtn) {
+        placeOrderBtn.addEventListener("click", () => {
+          const ids = Store.placeOrder();
+          Store.updateCartBadge();
+          if (ids.length > 0) {
+            window.location.href = "bestillinger.html?placed=" + ids.join(",");
+          }
+        });
+      }
+    }
+
+    initNav("handlekurv");
+    renderCart();
+  </script>
+</body>
+</html>
